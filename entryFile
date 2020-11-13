@@ -1,0 +1,40 @@
+5+3
+5+3
+6*7
+2+6*5
+6*2+2
+(2+2)*6
+
+!@'
+
+b = 6 * 5
+c = 27+2*2
+
+"abba"
+"abcd" + "efg" + "h"
+"hello" * 2
+2 * "world"
+
+$a = "hello" + 2*"world"
+
+$b = "black"
+$c = "cat"
+$b + $c
+
+r = 4
+$c * r
+r * $c
+
+("siamese" + $c) * 2
+
+$d = 3
+s = $a *2 + "errors"
+2 + "error"
+"error" + 2
+"chaine" * "erreur"
+$v *2
+$v + $x
+z * "chaineerreur"
+z * "chaine" + "erreur"
+
+PRINT

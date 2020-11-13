@@ -1,0 +1,193 @@
+//Spec JCup
+/*
+* Compilation Project
+*/
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.HashMap;
+
+parser code {:
+    public static void main(String args[]) throws Exception {
+        new parser(new Yylex(new InputStreamReader(System.in))).parse();
+    }
+:}
+
+//Java declaration
+action code {:
+  HashMap<String, String> hmapStr = new HashMap<>();
+  HashMap<String, Integer> hmapInt = new HashMap<>();
+  Boolean ERROR = false;
+  String ERRORVAR = "";
+:}
+
+//Terminal var declaration
+terminal Integer NB;
+terminal String VARIABLESTRING;
+terminal String VARIABLEINT;
+terminal String CHAR;
+terminal String PLUS;
+terminal String MULT;
+terminal String OP;
+terminal String CP;
+terminal String AFFECT;
+terminal String PRINT;
+terminal String CR;
+
+//Expressions var
+non terminal Integer errors, expr, line, operationInt, operationAffectInt;
+non terminal String operationStr, operationAffectString;
+
+//Precedences
+precedence left PLUS;
+precedence left MULT;
+
+
+//Expr -> S. Will execute line then the code snippet (ie. S'-> S)
+expr	::= line {: System.out.println();
+				    System.out.println(" End of analysis! "); :};
+					
+//Expr -> S -> E\nS | A\nS | B\nS | C\nS | D\nS | \nS | epsilon
+line ::= errors CR
+						line   
+		|	operationInt:total {: if(!ERROR){
+										System.out.println("\n	- : integer " + total + "\n");
+									} else {
+										System.out.println("\n	ERROR : integer variable unknown: " + ERRORVAR + "\n");
+										ERROR = false;
+										ERRORVAR = "";
+									} :} CR
+						line
+		|   operationStr:total {: if(!ERROR){
+										System.out.println("\n	- : string \"" + total.replace("\"","") + "\"\n");
+									} else {
+										System.out.println("\n	ERROR : string variable unknown: " + ERRORVAR + "\n");
+										ERROR = false;
+										ERRORVAR = "";
+									}
+								:} CR
+						line
+		|   operationAffectString CR
+						line
+		|   operationAffectInt CR
+						line
+		| PRINT					  {: System.out.println("\n	String variables:");
+									 for (HashMap.Entry<String, String> entry : hmapStr.entrySet()) {
+										String key = entry.getKey();
+										String value = entry.getValue();
+										System.out.println("		" + key + " = " + value);
+									 }
+									 
+									 System.out.println("\n	Integer variables:"); 
+									 for (HashMap.Entry<String, Integer> entry : hmapInt.entrySet()) {
+										String key = entry.getKey();
+										Integer value = entry.getValue();
+										System.out.println("		" + key + " = " + value);
+									 } :} CR
+						line
+		| CR
+						line				
+		| ;
+
+
+//Integer operation to split Int and String
+//Ask for a form: E ->  varstring = A | varint = B | A + B | B + A | B * B
+errors		::= VARIABLESTRING AFFECT operationInt	    {: System.out.println("\n	ERROR : Wrong type of affectation (tried to affect int to string var)\n"); :}
+		        |	VARIABLEINT AFFECT operationStr		{: System.out.println("\n	ERROR : Wrong type of affectation (tried to affect string to int var)\n"); :}
+		        |	operationInt PLUS operationStr		{: System.out.println("\n	ERROR : wrong operation (tried to add a string to an int)\n"); :}
+		        |	operationStr PLUS operationInt		{: System.out.println("\n	ERROR : wrong operation (tried to add an int to a string)\n"); :}
+		        |	operationStr MULT operationStr		{: System.out.println("\n	ERROR : wrong operation (tried to multiply two strings)\n"); :}
+		        ;
+	
+//Integer operation to split Int and String
+//Ask for a form: A ->  A+A | A*A | (A) | int | varint
+operationInt	::= operationInt:total1 PLUS operationInt:total2	    {: if(!ERROR){
+																				RESULT = total1 + total2;
+																			} else {
+																				
+																			} 
+																		:}
+		        |	operationInt:total1 MULT operationInt:total2	    {: if(!ERROR){
+																				RESULT = total1 * total2;
+																			} else {
+																				
+																			}
+																		:}
+		        |	OP operationInt:total CP				            {: if(!ERROR){
+																				RESULT = total; 
+																			} else {
+																				
+																			}
+																		:}
+		        |	NB:total								            {: if(!ERROR){
+																				RESULT = total;
+																			} else {
+																				
+																			} 
+																		:}
+		        |	VARIABLEINT:ident									{: Boolean res = hmapInt.containsKey(ident);
+		        														   if (!res){
+		        														   		ERROR = true;
+		        														   		ERRORVAR = ident;
+		        														   		RESULT = 0;
+		        														   } else {
+		        														   		RESULT = hmapInt.get(ident);
+		        														   }
+		        														:}
+		        ;
+		        
+//ENTIER:n is the current token declared in my_spec1.lex
+//Ask for a form: B ->  B+B | A * B | B * A | (B) | char | varstring
+operationStr	::= operationStr:total1 PLUS operationStr:total2	    {: if(!ERROR){
+																				RESULT = total1.replace("\"","") + total2.replace("\"","");
+																			} else {
+																				RESULT = ERRORVAR;
+																			}
+																		:}
+		        |	operationInt:multi MULT operationStr:strmult  		{:  if (!ERROR){
+				    															RESULT = "\"";
+				    															for(int i = 0; i < multi; i++){
+				    																RESULT += strmult.replace("\"","");
+				    															}
+				    															RESULT += "\"";
+				    														} else {
+				    															RESULT = ERRORVAR;
+				    														}
+		        														:}
+		        |	operationStr:strmult MULT operationInt:multi 	    {: if (!ERROR){
+				    															RESULT = "\"";
+				    															for(int i = 0; i < multi; i++){
+				    																RESULT += strmult.replace("\"","");
+				    															}
+				    															RESULT += "\"";
+				    														} else {
+				    															RESULT = ERRORVAR;
+				    														}
+		        														:}
+		        |	OP operationStr:total CP					        {: RESULT = total; :}
+		        |	CHAR:total								            {: RESULT = total; :}
+		        |	VARIABLESTRING:ident								{: Boolean res = hmapStr.containsKey(ident);
+		        														   if (!res){
+		        														   		ERROR = true;
+		        														   		ERRORVAR = ident;
+		        														   		RESULT = ERRORVAR;
+		        														   } else {
+		        														   		RESULT = hmapStr.get(ident);
+		        														   } :}
+		        ;
+
+//String affectation. Needed separated because of the type to get a proper line return	
+//Ask for a form: C ->  varstring = B	        
+operationAffectString	::= VARIABLESTRING:ident AFFECT operationStr:type       {: hmapStr.put(ident, ( "\"" + type.replace("\"","") + "\""));
+																				  System.out.println("\n	" + ident + " : string \"" + hmapStr.get(ident) + "\"");
+							     												  System.out.println();
+																			   :}
+					    ;
+																			   
+//Integer affectation. Needed separated because of the type to get a proper line return	
+//Ask for a form: D ->  varstring = A																				   
+operationAffectInt ::=	VARIABLEINT:ident AFFECT operationInt:type          {: hmapInt.put(ident, Integer.valueOf(type));
+																			  System.out.println("\n	" + ident + " : integer \"" + hmapInt.get(ident) + "\"");
+									     									  System.out.println();
+																		   :}
+				   ;
